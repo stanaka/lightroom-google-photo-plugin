@@ -11,7 +11,7 @@ before_install:
 - source .travis/setenv_lua.sh
 script:
 - cd gphoto.lrdevplugin
-- for i in *.lua; do luac $i -o $i; done
+- for i in *.lua; do luac -o $i $i; done
 - cd ..
 - zip -r gphoto.lrdevplugin.zip gphoto.lrdevplugin
 deploy:
