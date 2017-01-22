@@ -4,6 +4,7 @@ env:
   global:
   - LUAROCKS=2.3.0
   - LUA=lua5.1
+  - secure: YT2nA4uGoKKYtoezg0LeN46GkcUHI4LdOVwRJmBuzqjqZ7xQk2+tIYCnWUrcoA8nTan/Fbw1BAe1ocG7JHxXP8qpL60X03pAKP6GPgqx/ZkVpIptQnFawxiMFDQkJ2xbdVM8ikmlRBZ9b+JlEEe2OVIiB9pNR1aLf3PIjC8vLWh4lQchOHQqmG+qJ6O9ie5ObnVsBmoo4oWabrkoFeArhVqFK9JST9xKvKmL5+bhibAwHDvQQjfOkpjnhZcfoTHO6oOieJlGf1LeL6QT9E0yJzZA2LnGfxcB+STdRbPt9gUVZ+dVd3zUAANmsqG908Jzsryo+q6J6fPJv/yDvDhQmtHa25ApxxnfJIZrkZkaw25/e8jN6RcFjQCfpAHZtT4mPOxBNii5ChlBkjBXvMHzzWA+kNawZSw8O9XkAu0+x1SV+6lDFhOg+Tm9icSZx/Q1gLFWAPbWq5pHWB5YwiminZn6v7W/TxoWE2SsBUikXfjlvJPl/dMCVRDu0LBET9Q89ssO8CZ+t8eumFqFwoFw5UYVJTu4OCqCZvvvvqZZmxnusEaUMBMwjy43hxVYAcaRSWYVLz+7SFnvGdfh3w1Yrqq988WcyEo8XphdKRtMrZZSDSTsQ9kuY4cgtJOmgQxKaR3dmue9KcFypi3BwhMYhFjQmHM6422C68HIUqruCO0=
 branches:
   only:
   - master
@@ -11,6 +12,8 @@ before_install:
 - source .travis/setenv_lua.sh
 script:
 - cd gphoto.lrdevplugin
+- sed -i.bak "s/CONSUMER_KEY = \"\"/CONSUMER_KEY = \""$CONSUMER_KEY"\"/" GPhotoAPI.lua
+- sed -i.bak "s/CONSUMER_SECRET = \"\"/CONSUMER_SECRET = \""$CONSUMER_SECRET"\"/" GPhotoAPI.lua
 - for i in *.lua; do luac -o $i $i; done
 - cd ..
 - zip -r /tmp/lightroom-google-photo-plugin.zip gphoto.lrdevplugin
