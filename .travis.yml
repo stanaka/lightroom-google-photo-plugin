@@ -1,0 +1,27 @@
+language: c
+sudo: false
+env:
+  global:
+  - LUAROCKS=2.3.0
+  - LUA=lua5.1
+branches:
+  only:
+  - master
+before_install:
+- source .travis/setenv_lua.sh
+script:
+- cd gphoto.lrdevplugin
+- for i in *.lua; do luac $i -o $i; done
+- cd ..
+- zip -r gphoto.lrdevplugin.zip gphoto.lrdevplugin
+deploy:
+  provider: releases
+  api_key:
+    secure: jVaJcq0IU78RPUsDbpn/AQmbQ2ScoKVwiaoGxJxC03MXU1tKzb682l0c4i+8pNtAJzWdCmxTJ980Fg2qrSzUvD5hVtwADyX1OeC/Vb81FsCCrubmKOQMQQGyOk3JMxQ7vcow+1u8HU5wdq/uTgI72yO7hP71WbqvT82kMMes6nPcwK0+YJyw/C4cINt6s6134PbHr41lgf/L6i2DQ4yMkxesMffRaq+9HN2nAQyrEifs2aA4sNRR4cL0uNsKWblOtTCqL21KbZa1eaRGZUza2rDHfmyxfwaqsJGPhFv1K0z9o0pVThRug5W+u12DyGYkFnx7gc+yDet0kPPJBAD6R3TyMTCX4TBZlzrnlzmwJpRc8U/c0lW+G/AbYQ6saUxIz63CygC8yi24JOeexZZRS30X+qYYl8dGnCQiYEh+qJ0bUlaLlUj1COqDZayyDI3e0VwteIp8cekS7TfeuDaYTXTK9syoYckyn4sw8eUBwkdF/+NRJH+tJarFi2Ja++6Rx96Pz79WeHjvw/0/GwYcLctM8FGr7dHxTxHdilrCtuCxvxV+vYOYeOQDhvrY0e/e5Dzn/5MnqQVWlTfjCE0NAsMbuB3dnq3zqqz0zC1Q9frW/1J2gFHAJjeIIYHtfju2GmFgR4iJyDCH7ef5uukTG2PirYFaUTXn0LkYJMxlXyU=
+  file: lightroom-google-photo-plugin.zip
+  on:
+    repo: stanaka/lightroom-google-photo-plugin
+notifications:
+  email:
+    on_success: change
+    on_failure: always
