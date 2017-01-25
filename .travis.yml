@@ -11,12 +11,12 @@ branches:
 before_install:
 - source .travis/setenv_lua.sh
 script:
-- cd gphoto.lrdevplugin
+- cd google-photo.lrplugin
 - sed -i.bak "s/CONSUMER_KEY = \"\"/CONSUMER_KEY = \""$CONSUMER_KEY"\"/" GPhotoAPI.lua
 - sed -i.bak "s/CONSUMER_SECRET = \"\"/CONSUMER_SECRET = \""$CONSUMER_SECRET"\"/" GPhotoAPI.lua
 - for i in *.lua; do luac -o $i $i; done
 - cd ..
-- zip -r /tmp/lightroom-google-photo-plugin.zip gphoto.lrdevplugin
+- zip -r /tmp/lightroom-google-photo-plugin.zip google-photo.lrplugin
 deploy:
   provider: releases
   api_key:
