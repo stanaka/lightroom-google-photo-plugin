@@ -24,7 +24,7 @@ logger:enable('logfile')
 
 local ACCESS_TOKEN_URL = "https://www.googleapis.com/oauth2/v4/token"
 
-local CONSUMER_KEY = "";
+local CONSUMER_KEY = ""
 local CONSUMER_SECRET = ""
 local SALT = ""
 
@@ -327,7 +327,7 @@ function GPhotoAPI.login(context)
 		bind_to_object = properties,
 		spacing = f:control_spacing(),
 		f:picture {
-			value = _PLUGIN:resourceId( "login.png" )
+			value = _PLUGIN:resourceId( "small_gphoto@2x.png" )
 		},
 		f:static_text {
 			title = "Enter the verification token provided by the website",
@@ -346,7 +346,7 @@ function GPhotoAPI.login(context)
 		actionVerb = "Authorize"
 	} )
 
-	if action == "cancel" then return nil end
+	if action == "cancel" or not properties.verifier then return nil end
 
 	-- get an access token_secret
 	local args = {
@@ -366,7 +366,7 @@ function GPhotoAPI.login(context)
 	local json = require 'json'
 	local auth = json.decode(response)
 	local access_token = auth.access_token
-	prefs.access_token = auth.access_token
+	-- prefs.access_token = auth.access_token
 	local refresh_token = auth.refresh_token
 
 	if not access_token or not refresh_token then

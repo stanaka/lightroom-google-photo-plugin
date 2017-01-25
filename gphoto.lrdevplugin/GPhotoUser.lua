@@ -14,15 +14,17 @@ GPhotoUser = {}
 --------------------------------------------------------------------------------
 
 local function storedCredentialsAreValid( propertyTable )
-    logger:trace('storedCredentialsAreValid:',
-		propertyTable.access_token ~= nil and propertyTable.refresh_token ~= nil)
-    return propertyTable.access_token ~= nil and propertyTable.refresh_token ~= nil
-
+	logger:trace('storedCredentialsAreValid:',
+		propertyTable.access_token and propertyTable.access_token ~= ""
+			and propertyTable.refresh_token and propertyTable.refresh_token ~= "")
+	return propertyTable.access_token and propertyTable.access_token ~= ""
+			and propertyTable.refresh_token and propertyTable.refresh_token ~= ""
 end
 
 --------------------------------------------------------------------------------
 
 local function notLoggedIn( propertyTable )
+	logger:trace("notLoggedIn invoked.")
 	propertyTable.token = nil
 
 	propertyTable.username = nil
@@ -30,7 +32,7 @@ local function notLoggedIn( propertyTable )
     propertyTable.access_token = nil
     propertyTable.refresh_token = nil
 
-	propertyTable.accountStatus = LOC "$$$/GPhoto/AccountStatus/NotLoggedIn=Not logged in"
+	propertyTable.accountStatus = LOC "$$$/GPhoto/SignIn=Sign in with your Google account."
 	propertyTable.loginButtonTitle = LOC "$$$/GPhoto/LoginButton/NotLoggedIn=Log In"
 	propertyTable.loginButtonEnabled = true
 	propertyTable.validAccount = false
@@ -47,12 +49,6 @@ function GPhotoUser.login( propertyTable )
 
 	LrFunctionContext.postAsyncTaskWithContext( 'GPhoto login',
 	function( context )
-
-		-- Clear any existing login info, but only if creating new account.
-		-- If we're here on an existing connection, that's because the login
-		-- token was rejected. We need to retain existing account info so we
-		-- can cross-check it.
-
 		if not propertyTable.LR_editingExistingPublishConnection then
 			notLoggedIn( propertyTable )
 		end
@@ -63,7 +59,6 @@ function GPhotoUser.login( propertyTable )
 		LrDialogs.attachErrorDialogToFunctionContext( context )
 
 		-- Make sure login is valid when done, or is marked as invalid.
-
 		context:addCleanupHandler( function()
 			doingLogin = false
 			if not storedCredentialsAreValid( propertyTable ) then
@@ -71,20 +66,8 @@ function GPhotoUser.login( propertyTable )
 			end
 		end )
 
-		-- Show request for authentication dialog.
-        --[[
-		local authRequestDialogResult = LrDialogs.confirm(
-			LOC "$$$/GPhoto/AuthRequestDialog/Message=Lightroom needs your permission to upload images to GPhoto.",
-			LOC "$$$/GPhoto/AuthRequestDialog/HelpText=If you click Authorize, you will be taken to a web page in your web browser where you can log in. When you're finished, return to Lightroom to complete the authorization.",
-			LOC "$$$/GPhoto/AuthRequestDialog/AuthButtonText=Authorize",
-			LOC "$$$/LrDialogs/Cancel=Cancel" )
-		if authRequestDialogResult == 'cancel' then
-			return
-		end
-        ]]--
-
 		-- Request the frob that we need for authentication.
-		propertyTable.accountStatus = LOC "$$$/GPhoto/AccountStatus/WaitingForGPhoto=Waiting for response from GPhoto.com..."
+		propertyTable.accountStatus = LOC "$$$/GPhoto/AccountStatus/WaitingForGPhoto=Waiting for response..."
 
 		require 'GPhotoAPI'
         local auth = GPhotoAPI.login(context)
@@ -99,10 +82,12 @@ function GPhotoUser.login( propertyTable )
 		end
         ]]
 
-        logger:info("access_token before: ", auth.access_token)
-        propertyTable.access_token = auth.access_token
-        propertyTable.refresh_token = auth.refresh_token
-        logger:info("access_token after: ", propertyTable.access_token)
+		if auth and auth.access_token then
+            logger:info("access_token before: ", auth.access_token)
+	        propertyTable.access_token = auth.access_token
+	        propertyTable.refresh_token = auth.refresh_token
+		end
+		logger:info("access_token after: ", propertyTable.access_token)
 
         GPhotoUser.updateUserStatusTextBindings( propertyTable )
 	end )
@@ -117,20 +102,15 @@ function GPhotoUser.verifyLogin( propertyTable )
 		LrTasks.startAsyncTask( function()
 			logger:trace( "verifyLogin: updateStatus() is executing." )
 			if storedCredentialsAreValid( propertyTable ) then
-
                 if propertyTable.LR_editingExistingPublishConnection then
 					propertyTable.loginButtonTitle = LOC "$$$/GPhoto/LoginButton/LogInAgain=Log In"
 					propertyTable.loginButtonEnabled = false
 					propertyTable.validAccount = true
                 else
-					propertyTable.loginButtonTitle = LOC "$$$/GPhoto/LoginButton/LoggedIn=Switch Account?"
+					propertyTable.loginButtonTitle = LOC "$$$/GPhoto/LoginButton/LoggedIn=Switch Account"
 					propertyTable.loginButtonEnabled = true
 					propertyTable.validAccount = true
                 end
-                propertyTable.changeAccountButtonTitle = LOC "$$$/GPhoto/LoginButton/LogInAgain=Change Account"
-                propertyTable.changeAccountButtonEnabled = true
-                propertyTable.revokeAccountButtonTitle = LOC "$$$/GPhoto/LoginButton/LogInAgain=Revoke Account"
-                propertyTable.revokeAccountButtonEnabled = true
 			else
 				notLoggedIn( propertyTable )
 			end
@@ -147,6 +127,6 @@ function GPhotoUser.updateUserStatusTextBindings( settings )
     if storedCredentialsAreValid(settings) then
         settings.accountStatus = LOC( "$$$/GPhoto/AccountStatus/LoggedIn=Logged in" )
     else
-        settings.accountTypeMessage = LOC( "$$$/GPhoto/SignIn=Sign in with your Google account." )
+        settings.accountStatus = LOC( "$$$/GPhoto/SignIn=Sign in with your Google account." )
     end
 end

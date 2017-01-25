@@ -105,7 +105,6 @@ function exportServiceProvider.startDialog( propertyTable )
 	logger:trace('startDialog')
 
 	-- Clear login if it's a new connection.
-	logger:info("Existing access_token: '" .. propertyTable.access_token .. "'")
 	--propertyTable.access_token = 'ya29.Ci_UA7aEsvT6-oVI8fjxZvB6i8oO13WgdZUviLaCVtpEPYZqhQcQycR-u2X9xtmYGA'
 	if not propertyTable.LR_editingExistingPublishConnection then
 		propertyTable.username = nil
@@ -139,259 +138,18 @@ function exportServiceProvider.sectionsForTopOfDialog( f, propertyTable )
 					alignment = 'right',
 					fill_horizontal = 1,
 				},
-
 				f:push_button {
-					width = tonumber( LOC "$$$/locale_metric/GPhoto/ExportDialog/LoginButton/Width=90" ),
+					width = tonumber( LOC "$$$/locale_metric/GPhoto/ExportDialog/LoginButton/Width=160" ),
 					title = bind 'loginButtonTitle',
 					enabled = bind 'loginButtonEnabled',
 					action = function()
-					require 'GPhotoUser'
-					GPhotoUser.login( propertyTable )
-					end,
-				},
-
-				f:push_button {
-					width = tonumber( LOC "$$$/locale_metric/GPhoto/ExportDialog/ChangeAccountButton/Width=90" ),
-					title = bind 'changeAccountButtonTitle',
-					enabled = bind 'changeAccountButtonEnabled',
-					action = function()
 						require 'GPhotoUser'
-						GPhotoUser.changeAccount( propertyTable )
+						GPhotoUser.login( propertyTable )
 					end,
-				},
-
-				f:push_button {
-					width = tonumber( LOC "$$$/locale_metric/GPhoto/ExportDialog/RevokeAccountButton/Width=90" ),
-					title = bind 'revokeAccountButtonTitle',
-					enabled = bind 'revokeAccountEnabled',
-					action = function()
-						require 'GPhotoUser'
-						GPhotoUser.revokeAccount( propertyTable )
-					end,
-				},
-			},
-		},
-
-		{
-			title = LOC "$$$/GPhoto/ExportDialog/Title=GPhoto Title",
-
-			synopsis = function( props )
-				if props.titleFirstChoice == 'title' then
-					return LOC( "$$$/GPhoto/ExportDialog/Synopsis/TitleWithFallback=IPTC Title or ^1", displayNameForTitleChoice[ props.titleSecondChoice ] )
-				else
-					return props.titleFirstChoice and displayNameForTitleChoice[ props.titleFirstChoice ] or ''
-				end
-			end,
-
-			f:column {
-				spacing = f:control_spacing(),
-
-				f:row {
-					spacing = f:label_spacing(),
-
-					f:static_text {
-						title = LOC "$$$/GPhoto/ExportDialog/ChooseTitleBy=Set GPhoto Title Using:",
-						alignment = 'right',
-						width = share 'GPhotoTitleSectionLabel',
-					},
-
-					f:popup_menu {
-						value = bind 'titleFirstChoice',
-						width = share 'GPhotoTitleLeftPopup',
-						items = {
-							{ value = 'filename', title = displayNameForTitleChoice.filename },
-							{ value = 'title', title = displayNameForTitleChoice.title },
-							{ value = 'empty', title = displayNameForTitleChoice.empty },
-						},
-					},
-
-					f:spacer { width = 20 },
-
-					f:static_text {
-						title = LOC "$$$/GPhoto/ExportDialog/ChooseTitleBySecondChoice=If Empty, Use:",
-						enabled = LrBinding.keyEquals( 'titleFirstChoice', 'title', propertyTable ),
-					},
-
-					f:popup_menu {
-						value = bind 'titleSecondChoice',
-						enabled = LrBinding.keyEquals( 'titleFirstChoice', 'title', propertyTable ),
-						items = {
-							{ value = 'filename', title = displayNameForTitleChoice.filename },
-							{ value = 'empty', title = displayNameForTitleChoice.empty },
-						},
-					},
-				},
-
-				f:row {
-					spacing = f:label_spacing(),
-
-					f:static_text {
-						title = LOC "$$$/GPhoto/ExportDialog/OnUpdate=When Updating Photos:",
-						alignment = 'right',
-						width = share 'GPhotoTitleSectionLabel',
-					},
-
-					f:popup_menu {
-						value = bind 'titleRepublishBehavior',
-						width = share 'GPhotoTitleLeftPopup',
-						items = {
-							{ value = 'replace', title = LOC "$$$/GPhoto/ExportDialog/ReplaceExistingTitle=Replace Existing Title" },
-							{ value = 'leaveAsIs', title = LOC "$$$/GPhoto/ExportDialog/LeaveAsIs=Leave Existing Title" },
-						},
-					},
 				},
 			},
 		},
 	}
-end
-
---------------------------------------------------------------------------------
-function exportServiceProvider.sectionsForBottomOfDialog( f, propertyTable )
-	return {
-		{
-			title = LOC "$$$/GPhoto/ExportDialog/PrivacyAndSafety=Privacy and Safety",
-			synopsis = function( props )
-				local summary = {}
-
-				local function add( x )
-					if x then
-						summary[ #summary + 1 ] = x
-					end
-				end
-
-				if props.privacy == 'private' then
-					add( LOC "$$$/GPhoto/ExportDialog/Private=Private" )
-					if props.privacy_family then
-						add( LOC "$$$/GPhoto/ExportDialog/Family=Family" )
-					end
-					if props.privacy_friends then
-						add( LOC "$$$/GPhoto/ExportDialog/Friends=Friends" )
-					end
-				else
-					add( LOC "$$$/GPhoto/ExportDialog/Public=Public" )
-				end
-
-				local safetyStr = kSafetyTitles[ props.safety ]
-				if safetyStr then
-					add( safetyStr )
-				end
-				return table.concat( summary, " / " )
-			end,
-
-			place = 'horizontal',
-
-			f:column {
-				spacing = f:control_spacing() / 2,
-				fill_horizontal = 1,
-
-				f:row {
-					f:static_text {
-						title = LOC "$$$/GPhoto/ExportDialog/Privacy=Privacy:",
-						alignment = 'right',
-						width = share 'labelWidth',
-					},
-
-					f:radio_button {
-						title = LOC "$$$/GPhoto/ExportDialog/Private=Private",
-						checked_value = 'private',
-						value = bind 'privacy',
-					},
-				},
-
-				f:row {
-					f:spacer {
-						width = share 'labelWidth',
-					},
-
-					f:column {
-						spacing = f:control_spacing() / 2,
-						margin_left = 15,
-						margin_bottom = f:control_spacing() / 2,
-
-						f:checkbox {
-							title = LOC "$$$/GPhoto/ExportDialog/Family=Family",
-							value = bind 'privacy_family',
-							enabled = LrBinding.keyEquals( 'privacy', 'private' ),
-						},
-
-						f:checkbox {
-							title = LOC "$$$/GPhoto/ExportDialog/Friends=Friends",
-							value = bind 'privacy_friends',
-							enabled = LrBinding.keyEquals( 'privacy', 'private' ),
-						},
-					},
-				},
-
-				f:row {
-					f:spacer {
-						width = share 'labelWidth',
-					},
-
-					f:radio_button {
-						title = LOC "$$$/GPhoto/ExportDialog/Public=Public",
-						checked_value = 'public',
-						value = bind 'privacy',
-					},
-				},
-			},
-
-			f:column {
-				spacing = f:control_spacing() / 2,
-
-				fill_horizontal = 1,
-
-				f:row {
-					f:static_text {
-						title = LOC "$$$/GPhoto/ExportDialog/Safety=Safety:",
-						alignment = 'right',
-						width = share 'GPhoto_col2_label_width',
-					},
-
-					f:popup_menu {
-						value = bind 'safety',
-						width = share 'GPhoto_col2_popup_width',
-						items = {
-							{ title = kSafetyTitles.safe, value = 'safe' },
-							{ title = kSafetyTitles.moderate, value = 'moderate' },
-							{ title = kSafetyTitles.restricted, value = 'restricted' },
-						},
-					},
-				},
-
-				f:row {
-					margin_bottom = f:control_spacing() / 2,
-
-					f:spacer {
-						width = share 'GPhoto_col2_label_width',
-					},
-
-					f:checkbox {
-						title = LOC "$$$/GPhoto/ExportDialog/HideFromPublicSite=Hide from public site areas",
-						value = bind 'hideFromPublic',
-					},
-				},
-
-				f:row {
-					f:static_text {
-						title = LOC "$$$/GPhoto/ExportDialog/Type=Type:",
-						alignment = 'right',
-						width = share 'GPhoto_col2_label_width',
-					},
-
-					f:popup_menu {
-						width = share 'GPhoto_col2_popup_width',
-						value = bind 'type',
-						items = {
-							{ title = LOC "$$$/GPhoto/ExportDialog/Type/Photo=Photo", value = 'photo' },
-							{ title = LOC "$$$/GPhoto/ExportDialog/Type/Screenshot=Screenshot", value = 'screenshot' },
-							{ title = LOC "$$$/GPhoto/ExportDialog/Type/Other=Other", value = 'other' },
-						},
-					},
-				},
-			},
-		},
-	}
-
 end
 
 --------------------------------------------------------------------------------
@@ -420,7 +178,6 @@ function exportServiceProvider.processRenderedPhotos( functionContext, exportCon
 	local exportSession = exportContext.exportSession
 	local exportSettings = assert( exportContext.propertyTable )
 	local nPhotos = exportSession:countRenditions()
-	-- GPhotoAPI.refreshToken(exportSettings)
 
 	-- Set progress title.
 	local progressScope = exportContext:configureProgress {
