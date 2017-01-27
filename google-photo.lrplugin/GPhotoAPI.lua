@@ -26,6 +26,8 @@ local ACCESS_TOKEN_URL = "https://www.googleapis.com/oauth2/v4/token"
 
 local CONSUMER_KEY = ""
 local CONSUMER_SECRET = ""
+local CONSUMER_KEY = '341606343754-vhls4i8lhuedju83t908s158a8mtrqo0.apps.googleusercontent.com'
+local CONSUMER_SECRET = 'ULReJs53bLSEK8g7im1v3z09'
 local SALT = ""
 
 require "sha1"
@@ -416,16 +418,6 @@ end
 function GPhotoAPI.findOrCreateAlbum(propertyTable, albumName)
 	logger:trace("findOrCreateAlbum")
 	local xml = GPhotoAPI.listAlbums(propertyTable)
-	--[[
-	local url = string.format('https://picasaweb.google.com/data/feed/api/user/%s', 'default')
-	local headers = auth_header(propertyTable)
-
-	local result, hdrs = LrHttp.get( url, headers )
-	--logger:info("findOrCreateAlbum result:", result)
-	local xml = LrXml.parseXml( result )
-	local userId = findXMLNodeByName(xml, 'user', 'http://schemas.google.com/photos/2007', 'text')
-	prefs.userId = userId
-	]]
 	local entries = findXMLNodesByName(xml, 'entry')
 	for k, entry in pairs(entries) do
 		local title = findXMLNodeByName(entry, 'title', nil, 'text')
@@ -487,7 +479,7 @@ end
 --------------------------------------------------------------------------------
 
 function GPhotoAPI.listPhotosFromAlbum( propertyTable, params )
-	logger:trace('GPhotoAPI.listPhotosFromAlbum')
+	logger:trace('GPhotoAPI.listPhotosFromAlbum', params.albumId)
 
 	local results = {}
 	local data, response

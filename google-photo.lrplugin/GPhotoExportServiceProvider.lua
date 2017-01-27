@@ -192,15 +192,12 @@ function exportServiceProvider.processRenderedPhotos( functionContext, exportCon
 	local publishedCollectionInfo = exportContext.publishedCollectionInfo
 	local albumId = publishedCollectionInfo.remoteId
 	local isDefaultCollection = publishedCollectionInfo.isDefaultCollection
+	local albumRemoteIds
+	local albumRemoteIdSet = {}
 	if not albumId and not isDefaultCollection then
 		albumId = GPhotoAPI.findOrCreateAlbum(exportSettings, publishedCollectionInfo.name)
+		albumRemoteIds = GPhotoAPI.listPhotosFromAlbum( exportSettings, { albumId = albumId } )
 	end
-
-	-- Get a list of photos already in this photoset so we know which ones we can replace and which have
-	-- to be re-uploaded entirely.
-	local albumRemoteIds = GPhotoAPI.listPhotosFromAlbum( exportSettings, { albumId = albumId } )
-
-	local albumRemoteIdSet = {}
 
 	-- Turn it into a set for quicker access later.
 	if albumRemoteIds then
