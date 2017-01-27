@@ -258,13 +258,13 @@ function GPhotoAPI.uploadPhoto( propertyTable, params )
 	local xml = LrXml.parseXml( result )
 	local photoId = findXMLNodeByName(xml, 'id', 'http://schemas.google.com/photos/2007', 'text')
 	if photoId then
-		logger:info("upload successful: ", simpleXml['link:edit-media']['href'], xml)
+		--logger:info("upload successful: ", simpleXml['link:edit-media']['href'], xml)
 		local albumId = findXMLNodeByName(xml, 'albumid', 'http://schemas.google.com/photos/2007', 'text')
-		logger:info(string.format("Photo ID: %s, Album ID: %s", photoId, albumId))
+		logger:info(string.format("upload successful: Photo ID: %s, Album ID: %s", photoId, albumId))
 
 		return string.format("%s,%s", photoId, albumId)
 
-	elseif params.photoId and simpleXml.err and tonumber( simpleXml.err.code ) == 7 then
+	elseif params.photoId then
 		logger:info("upload end: err")
 
 		-- Photo is missing. Most likely, the user deleted it outside of Lightroom. Just repost it.
@@ -380,6 +380,16 @@ function GPhotoAPI.login(context)
 
 end
 
+function GPhotoAPI.getUserId(propertyTable)
+	logger:trace("getUserId", prefs.userId)
+	if prefs.userId then
+		return prefs.userId
+	end
+
+	GPhotoAPI.listAlbums(propertyTable)
+	return prefs.userId
+end
+
 function GPhotoAPI.findAlbumById(propertyTable, targetAlbumId)
 	logger:trace("findAlbumById:", targetAlbumId)
 	local url = string.format('https://picasaweb.google.com/data/entry/api/user/%s/albumid/%s', 'default', targetAlbumId)
@@ -390,8 +400,23 @@ function GPhotoAPI.findAlbumById(propertyTable, targetAlbumId)
 	return result
 end
 
+function GPhotoAPI.listAlbums(propertyTable)
+	logger:trace("listAlbums")
+	local url = string.format('https://picasaweb.google.com/data/feed/api/user/%s', 'default')
+	local headers = auth_header(propertyTable)
+
+	local result, hdrs = LrHttp.get( url, headers )
+	--logger:info("listAlbums result:", result)
+	local xml = LrXml.parseXml( result )
+	local userId = findXMLNodeByName(xml, 'user', 'http://schemas.google.com/photos/2007', 'text')
+	prefs.userId = userId
+	return xml
+end
+
 function GPhotoAPI.findOrCreateAlbum(propertyTable, albumName)
 	logger:trace("findOrCreateAlbum")
+	local xml = GPhotoAPI.listAlbums(propertyTable)
+	--[[
 	local url = string.format('https://picasaweb.google.com/data/feed/api/user/%s', 'default')
 	local headers = auth_header(propertyTable)
 
@@ -400,6 +425,7 @@ function GPhotoAPI.findOrCreateAlbum(propertyTable, albumName)
 	local xml = LrXml.parseXml( result )
 	local userId = findXMLNodeByName(xml, 'user', 'http://schemas.google.com/photos/2007', 'text')
 	prefs.userId = userId
+	]]
 	local entries = findXMLNodesByName(xml, 'entry')
 	for k, entry in pairs(entries) do
 		local title = findXMLNodeByName(entry, 'title', nil, 'text')
@@ -411,7 +437,7 @@ function GPhotoAPI.findOrCreateAlbum(propertyTable, albumName)
 		end
 	end
 
-	url = string.format('https://picasaweb.google.com/data/feed/api/user/%s', prefs.userId)
+	url = string.format('https://picasaweb.google.com/data/feed/api/user/%s', GPhotoAPI.getUserId(propertyTable))
 	local body = string.format([[
         <entry xmlns='http://www.w3.org/2005/Atom'
             xmlns:media='http://search.yahoo.com/mrss/'
@@ -436,7 +462,7 @@ end
 
 function GPhotoAPI.updateAlbum(propertyTable, albumId, albumName)
 	logger:trace("updateAlbum:", albumId, albumName)
-	local url = string.format('https://picasaweb.google.com/data/entry/api/user/%s/albumid/%s', prefs.userId, albumId)
+	local url = string.format('https://picasaweb.google.com/data/entry/api/user/%s/albumid/%s', GPhotoAPI.getUserId(propertyTable), albumId)
 	local headers = auth_header(propertyTable)
 	local album = GPhotoAPI.findAlbumById(propertyTable, albumId)
 
@@ -475,7 +501,7 @@ function GPhotoAPI.listPhotosFromAlbum( propertyTable, params )
 	while curPage < numPages do
 		-- https://picasaweb.google.com/data/feed/api/user/liz/albumid/albumID?start-index=1&amp;max-results=1000&amp;v=2
 		local url = string.format('https://picasaweb.google.com/data/feed/api/user/%s/albumid/%s?start-index=%d&max-result=%d&v2',
-			prefs.userId, albumId, (curPage * itemsPerPage) + 1, itemsPerPage)
+			GPhotoAPI.getUserId(propertyTable), albumId, (curPage * itemsPerPage) + 1, itemsPerPage)
 		curPage = curPage + 1
 
 		logger:trace("call API", url)
@@ -515,7 +541,7 @@ function GPhotoAPI.deletePhoto( propertyTable, params )
 		ids[#ids+1] = id
 	end
 	-- 'DELETE https://picasaweb.google.com/data/entry/api/user/userID/albumid/albumID/photoid/photoID'
-	local postUrl = string.format( 'https://picasaweb.google.com/data/entry/api/user/%s/albumid/%s/photoid/%s', prefs.userId, ids[2], ids[1])
+	local postUrl = string.format( 'https://picasaweb.google.com/data/entry/api/user/%s/albumid/%s/photoid/%s', GPhotoAPI.getUserId(propertyTable), ids[2], ids[1])
 	local headers = auth_header(propertyTable)
 	headers[#headers+1] = { field = 'If-Match', value = '*' }
 	local method = 'DELETE'
