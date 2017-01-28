@@ -56,7 +56,7 @@ exportServiceProvider.allowColorSpaces = { 'sRGB' }
 exportServiceProvider.hidePrintResolution = true
 
 -- TODO: should be true
-exportServiceProvider.canExportVideo = false -- video is not supported through this sample plug-in
+exportServiceProvider.canExportVideo = true
 
 --------------------------------------------------------------------------------
 -- Google Photo SPECIFIC: Helper functions and tables.

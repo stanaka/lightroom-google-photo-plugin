@@ -216,6 +216,46 @@ local function findXMLNodesByName( node, name, namespace, array )
 	return ret
 end
 
+local function extension2contenttype( extensions )
+	if extensions == 'jpg' then
+		return 'image/jpeg'
+	elseif extensions == '3gp' then
+		return 'video/3gpp'
+	elseif extensions == 'avi' then
+		return 'video/avi'
+	elseif extensions == 'mov' then
+		return 'video/quicktime'
+	elseif extensions == 'mp4' then
+		return 'video/mp4'
+		-- return 'video/mpeg4'
+	elseif extensions == 'mpg' then
+		return 'video/mpeg'
+	elseif extensions == 'avi' then
+		return 'video/msvideo'
+	elseif extensions == 'asf' then
+		return 'video/x-ms-asf'
+	elseif extensions == 'wmv' then
+		return 'video/x-ms-wmv'
+		-- return 'video/x-msvideo'
+	end
+end
+
+-- character table string
+local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+
+-- encoding
+local function enc(data)
+	return ((data:gsub('.', function(x)
+		local r,b='',x:byte()
+		for i=8,1,-1 do r=r..(b%2^i-b%2^(i-1)>0 and '1' or '0') end
+		return r;
+	end)..'0000'):gsub('%d%d%d?%d?%d?%d?', function(x)
+		if (#x < 6) then return '' end
+		local c=0
+		for i=1,6 do c=c+(x:sub(i,i)=='1' and 2^(6-i) or 0) end
+		return b:sub(c+1,c+1)
+	end)..({ '', '==', '=' })[#data%3+1])
+end
 --------------------------------------------------------------------------------
 
 function GPhotoAPI.uploadPhoto( propertyTable, params )
@@ -229,9 +269,10 @@ function GPhotoAPI.uploadPhoto( propertyTable, params )
 	params.filePath = nil
 
 	local fileName = LrPathUtils.leafName( filePath )
+	local extensions = LrPathUtils.extension( filePath )
 	local headers = auth_header(propertyTable)
-	headers[#headers+1] = { field = 'Content-Type', value = 'image/jpeg'}
-	headers[#headers+1] = { field = 'Slug', value = fileName }
+	-- headers[#headers+1] = { field = 'Slug', value = fileName }
+	-- headers[#headers+1] = { field = 'Content-Type', value = extension2contenttype(extensions) }
 
 	local image = LrFileUtils.readFile( filePath )
 	local method = 'POST'
@@ -245,8 +286,52 @@ function GPhotoAPI.uploadPhoto( propertyTable, params )
 		headers[#headers+1] = { field = 'If-Match', value = '*' }
 		method = 'PUT'
 	end
+
+	--[[
+	Content-Type: multipart/related; boundary="END_OF_PART"
+	Content-Length: 423478347
+	MIME-version: 1.0
+
+	Media multipart posting
+	--END_OF_PART
+	Content-Type: application/atom+xml
+
+	<entry xmlns='http://www.w3.org/2005/Atom'>
+		<title>plz-to-love-realcat.jpg</title>
+		<summary>Real cat wants attention too.</summary>
+	<category scheme="http://schemas.google.com/g/2005#kind"
+	term="http://schemas.google.com/photos/2007#photo"/>
+			</entry>
+			--END_OF_PART
+			Content-Type: image/jpeg
+
+	...binary image data...
+	--END_OF_PART--
+	]]
+	headers[#headers+1] = { field = 'Content-Type', value = 'multipart/related; boundary="END_OF_PART"' }
+	--headers[#headers+1] = { field = 'Content-Type', value = 'multipart/related; boundary="END_OF_PART"' }
+	headers[#headers+1] = { field = 'MIME-version', value = '1.0' }
+	local body = [[
+Media multipart posting
+--END_OF_PART
+Content-Type: application/atom+xml
+
+<entry xmlns='http://www.w3.org/2005/Atom'>
+  <title>plz-to-love-realcat.mov</title>
+  <summary>Real cat wants attention too.</summary>
+  <category scheme="http://schemas.google.com/g/2005#kind"
+    term="http://schemas.google.com/photos/2007#photo"/>
+</entry>
+--END_OF_PART
+Content-Type: image/jpeg
+
+]]..image..[[
+--END_OF_PART--]]
+	headers[#headers+1] = { field = 'Content-Length', value = string.len(body) }
+
 	logger:info("upload start: ".. postUrl)
-	local result, hdrs = LrHttp.post( postUrl, image, headers, method)
+	-- local result, hdrs = LrHttp.post( postUrl, image, headers, method)
+	local result, hdrs = LrHttp.post( postUrl, body, headers, method)
 	logger:info("upload end: ", result)
 	if not result then
 		if hdrs and hdrs.error then
