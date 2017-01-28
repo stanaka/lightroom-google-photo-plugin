@@ -26,8 +26,6 @@ local ACCESS_TOKEN_URL = "https://www.googleapis.com/oauth2/v4/token"
 
 local CONSUMER_KEY = ""
 local CONSUMER_SECRET = ""
-local CONSUMER_KEY = '341606343754-vhls4i8lhuedju83t908s158a8mtrqo0.apps.googleusercontent.com'
-local CONSUMER_SECRET = 'ULReJs53bLSEK8g7im1v3z09'
 local SALT = ""
 
 require "sha1"
@@ -294,12 +292,12 @@ function GPhotoAPI.refreshToken(propertyTable)
 	local response, headers = call_it( "POST", ACCESS_TOKEN_URL, args, math.random(99999) )
 	logger:info("Refresh token response: ", response)
 	if not response or not headers.status then
-		LrErrors.throwUserError( "Could not connect to 500px.com. Please make sure you are connected to the internet and try again." )
+		LrErrors.throwUserError( "Could not connect to Google Photo. Please make sure you are connected to the internet and try again." )
 	end
 	local json = require 'json'
 	local auth = json.decode(response)
 	-- auth.access_token = LrStringUtils.trimWhitespace(auth.access_token)
-	logger:info("Old access_token: '" .. prefs.access_token .. "'")
+	logger:info("Old access_token: '" .. propertyTable.access_token .. "'")
 	logger:info("New access_token: '" .. auth.access_token .. "'")
 
 	prefs.access_token = auth.access_token
@@ -313,11 +311,11 @@ end
 
 	--------------------------------------------------------------------------------
 function GPhotoAPI.login(context)
-	-- local redirectURI = 'lightroom:/com.adobe.lightroom.export.gphoto'
-	local redirectURI = 'urn:ietf:wg:oauth:2.0:oob'
+	local redirectURI = 'https://stanaka.github.io/lightroom-google-photo-plugin/redirect'
+	--local redirectURI = 'urn:ietf:wg:oauth:2.0:oob'
 	local scope = 'https://picasaweb.google.com/data/'
 	local authURL = string.format(
-		'https://accounts.google.com/o/oauth2/v2/auth?scope=%s&redirect_uri=%s&response_type=code&client_id=%s',
+		'https://accounts.google.com/o/oauth2/v2/auth?scope=%s&redirect_uri=%s&response_type=code&prompt=consent&access_type=offline&client_id=%s',
 		scope, redirectURI, CONSUMER_KEY)
 
 	logger:info('openAuthUrl: ', authURL)
@@ -342,11 +340,20 @@ function GPhotoAPI.login(context)
 		},
 	}
 
+	GPhotoAPI.URLCallback = function( code )
+		logger:info("URLCallback2", code)
+
+		properties.verifier = code
+		LrDialogs.stopModalWithResult(contents, "ok")
+	end
+
 	local action = LrDialogs.presentModalDialog( {
 		title = "Enter verification token",
 		contents = contents,
 		actionVerb = "Authorize"
 	} )
+
+	GPhotoAPI.URLCallback = nil
 
 	if action == "cancel" or not properties.verifier then return nil end
 

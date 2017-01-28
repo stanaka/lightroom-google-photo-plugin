@@ -88,7 +88,6 @@ function GPhotoUser.login( propertyTable )
 	        propertyTable.refresh_token = auth.refresh_token
 		end
 		logger:info("access_token after: ", propertyTable.access_token)
-
         GPhotoUser.updateUserStatusTextBindings( propertyTable )
 	end )
 end

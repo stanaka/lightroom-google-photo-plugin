@@ -2,7 +2,7 @@ return {
 	LrSdkVersion = 3.0,
 	LrSdkMinimumVersion = 3.0, -- minimum SDK version required by this plug-in
 
-	LrToolkitIdentifier = 'com.adobe.lightroom.export.googlephoto',
+	LrToolkitIdentifier = 'org.stanaka.lightroom-google-photo-plugin',
 	LrPluginName = LOC "$$$/GPhoto/PluginName=GooglePhoto",
 
 	LrExportServiceProvider = {
@@ -10,6 +10,6 @@ return {
 		file = 'GPhotoExportServiceProvider.lua',
 	},
 	LrMetadataProvider = 'GPhotoMetadataDefinition.lua',
-
+	URLHandler = "GPhotoURLHandler.lua",
 	VERSION = { major=0, minor=1, revision=0 },
 }
