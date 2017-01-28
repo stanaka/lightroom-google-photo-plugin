@@ -9,7 +9,7 @@ require 'GPhotoAPI'
 --------------------------------------------------------------------------------
 
 local publishServiceProvider = {}
-publishServiceProvider.small_icon = 'small_gphoto.png'
+publishServiceProvider.small_icon = 'gphoto.png'
 
 publishServiceProvider.publish_fallbackNameBinding = 'fullname'
 publishServiceProvider.titleForPublishedCollection = LOC "$$$/GPhoto/TitleForPublishedCollection=Album"
