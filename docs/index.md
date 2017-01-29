@@ -1,4 +1,6 @@
-# Google Photos Plugin for Adobe Photoshop Lightroom
+---
+title: Google Photos Plugin for Adobe Photoshop Lightroom
+---
 
 Google Photos Plugin make it easy to upload photos from Adobe Photoshop Lightroom to [Google Photos](https://photos.google.com/).
 
