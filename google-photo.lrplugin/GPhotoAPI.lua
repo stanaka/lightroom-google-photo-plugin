@@ -218,6 +218,14 @@ end
 
 --------------------------------------------------------------------------------
 
+function GPhotoAPI.convertIds( photoId )
+	local ids = {}
+	for id in string.gmatch(photoId, "%d+") do
+		ids[#ids+1] = id
+	end
+	return ids
+end
+
 function GPhotoAPI.uploadPhoto( propertyTable, params )
 	assert( type( params ) == 'table', 'GPhotoAPI.uploadPhoto: params must be a table' )
 	logger:info( 'uploadPhoto: ', params.filePath )
@@ -234,26 +242,29 @@ function GPhotoAPI.uploadPhoto( propertyTable, params )
 	headers[#headers+1] = { field = 'Slug', value = fileName }
 
 	local image = LrFileUtils.readFile( filePath )
-	local method = 'POST'
-	-- Post it and wait for confirmation.
+	local result, hdrs
 	if params.photoId then
-		local ids = {}
-		for id in string.gmatch(params.photoId, "%d+") do
-			ids[#ids+1] = id
+		local ids = GPhotoAPI.convertIds(params.photoId)
+		local putUrl = string.format( 'https://picasaweb.google.com/data/media/api/user/%s/albumid/%s/photoid/%s', prefs.userId, ids[2], ids[1])
+		local putHeaders = table.shallowcopy(headers)
+		putHeaders[#putHeaders+1] = { field = 'If-Match', value = '*' }
+		result, hdrs = LrHttp.post( putUrl, image, putHeaders, 'PUT')
+		logger:info(string.format("upload end: %s, result: %s", hdrs.status, result))
+		if hdrs.status == 404 then
+			logger:info("upload again: ".. postUrl)
+			result, hdrs = LrHttp.post( postUrl, image, headers)
+			logger:info(string.format("upload end: %s, result: %s", hdrs.status, result))
 		end
-		postUrl = string.format( 'https://picasaweb.google.com/data/media/api/user/%s/albumid/%s/photoid/%s', prefs.userId, ids[2], ids[1])
-		headers[#headers+1] = { field = 'If-Match', value = '*' }
-		method = 'PUT'
+	else
+		logger:info("upload start: ".. postUrl)
+		result, hdrs = LrHttp.post( postUrl, image, headers, method)
+		logger:info(string.format("upload end: %s, result: %s", hdrs.status, result))
 	end
-	logger:info("upload start: ".. postUrl)
-	local result, hdrs = LrHttp.post( postUrl, image, headers, method)
-	logger:info("upload end: ", result)
 	if not result then
 		if hdrs and hdrs.error then
 			LrErrors.throwUserError( formatError( hdrs.error.nativeCode ) )
 		end
 	end
-
 	-- Parse GPhoto response for photo ID.
 	local xml = LrXml.parseXml( result )
 	local photoId = findXMLNodeByName(xml, 'id', 'http://schemas.google.com/photos/2007', 'text')

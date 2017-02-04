@@ -192,19 +192,9 @@ function exportServiceProvider.processRenderedPhotos( functionContext, exportCon
 	local publishedCollectionInfo = exportContext.publishedCollectionInfo
 	local albumId = publishedCollectionInfo.remoteId
 	local isDefaultCollection = publishedCollectionInfo.isDefaultCollection
-	local albumRemoteIds
-	local albumRemoteIdSet = {}
+	logger:trace(string.format('processRenderedPhotos albumId:%s, isDefaultCollection: %s', albumId, isDefaultCollection))
 	if not albumId and not isDefaultCollection then
 		albumId = GPhotoAPI.findOrCreateAlbum(exportSettings, publishedCollectionInfo.name)
-		albumRemoteIds = GPhotoAPI.listPhotosFromAlbum( exportSettings, { albumId = albumId } )
-	end
-
-	-- Turn it into a set for quicker access later.
-	if albumRemoteIds then
-		for _, photo in ipairs( albumRemoteIds ) do
-			logger:trace(string.format('RemoteId %s is exist', photo.remoteId))
-			albumRemoteIdSet[ photo.remoteId ] = true
-		end
 	end
 
 	local couldNotPublishBecauseFreeAccount = {}
@@ -212,17 +202,8 @@ function exportServiceProvider.processRenderedPhotos( functionContext, exportCon
 
 	local cannotRepublishCount = 0
 
-	-- Gather GPhoto photo IDs, and if we're on a free account, remember the renditions that
-	-- had been previously published.
 	for i, rendition in exportContext.exportSession:renditions() do
 		local GPhotoPhotoId = rendition.publishedPhotoId
-		if GPhotoPhotoId then
-			-- Check to see if the photo is still on GPhoto.
-			if not albumRemoteIdSet[ GPhotoPhotoId ] then --and not isDefaultCollection then
-				logger:trace(string.format('RemoteId %s is not found', GPhotoPhotoId))
-				GPhotoPhotoId = nil
-			end
-		end
 		GPhotoPhotoIdsForRenditions[ rendition ] = GPhotoPhotoId
 	end
 
