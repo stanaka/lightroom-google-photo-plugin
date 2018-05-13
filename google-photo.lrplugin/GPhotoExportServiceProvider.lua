@@ -117,6 +117,7 @@ function exportServiceProvider.startDialog( propertyTable )
 	updateCantExportBecause( propertyTable )
 
 	-- Make sure we're logged in.
+	logger:trace('call updateExportSettings in startDialog')
 	require 'GPhotoUser'
 	GPhotoUser.verifyLogin( propertyTable )
 end
@@ -154,11 +155,16 @@ end
 
 --------------------------------------------------------------------------------
 function exportServiceProvider.updateExportSettings( propertyTable )
+	propertyTable.access_token = ''
 	logger:trace('updateExportSettings')
+	logger:trace("access_token: '" .. propertyTable.access_token .. "'")
+	logger:trace("refresh_token: '" .. propertyTable.refresh_token .. "'")
+
 	local access_token = GPhotoAPI.refreshToken(propertyTable)
 	if access_token then
 		propertyTable.access_token = access_token
 	end
+	logger:trace('call updateExportSettings in updateExportSettings')
 	require 'GPhotoUser'
 	GPhotoUser.verifyLogin( propertyTable )
 
@@ -168,7 +174,7 @@ function exportServiceProvider.updateExportSettings( propertyTable )
 	else
 		prefs.counter = prefs.counter + 1
 	end
-	logger:info("counter:", prefs.counter)
+	logger:trace("counter:", prefs.counter)
 end
 
 --------------------------------------------------------------------------------

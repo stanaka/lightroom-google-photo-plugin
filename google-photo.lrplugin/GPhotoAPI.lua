@@ -23,6 +23,7 @@ logger:enable('logfile')
 --============================================================================--
 
 local ACCESS_TOKEN_URL = "https://www.googleapis.com/oauth2/v4/token"
+local USER_AGENT = "Lightroom Google Photo Plugin 0.2.0"
 
 local CONSUMER_KEY = ""
 local CONSUMER_SECRET = ""
@@ -151,14 +152,14 @@ local function call_it( method, url, params, rid )
 		return LrHttp.post( url, query_string,
 			{ auth_header,
 				{ field = "Content-Type", value = "application/x-www-form-urlencoded" },
-				{ field = "User-Agent", value = "Lightroom Google Photo Plugin 0.1.0" },
+				{ field = "User-Agent", value = USER_AGENT },
 				{ field = "Cookie", value = "GARBAGE" }
 			}
 		)
 	else
 		return LrHttp.get( url .. "?" .. query_string,
 			{ auth_header,
-				{ field = "User-Agent", value = "Lightroom Google Photo Plugin 0.1.0" }
+				{ field = "User-Agent", value = USER_AGENT }
 			}
 		)
 	end
@@ -168,52 +169,8 @@ local function auth_header(propertyTable)
 	logger:info("access_token:", propertyTable.access_token)
 	return {
 		{ field = 'GData-Version', value = '2'},
-		--{ field = 'Authorization', value = 'Bearer ' .. prefs.access_token }
 		{ field = 'Authorization', value = 'Bearer ' .. propertyTable.access_token }
 	}
-end
-
---------------------------------------------------------------------------------
-local function findXMLNodeByName( node, name, namespace, type )
-	local nodeType = string.lower( node:type() )
-
-	if nodeType == 'element' then
-		local n, ns = node:name()
-		if n == name and ((not namespace) or ns == namespace) then
-			if type == 'text' then
-				return node:text()
-			else
-				return node
-			end
-		else
-			local count = node:childCount()
-			for i = 1, count do
-				local result = findXMLNodeByName( node:childAtIndex( i ), name, namespace, type)
-				if result then
-					return result
-				end
-			end
-		end
-	end
-end
-
---------------------------------------------------------------------------------
-local function findXMLNodesByName( node, name, namespace, array )
-	local nodeType = string.lower( node:type() )
-	local ret = array and array or {}
-
-	if nodeType == 'element' then
-		local n, ns = node:name()
-		if n == name and ((not namespace) or ns == namespace) then
-			ret[#ret+1] = node
-		else
-			local count = node:childCount()
-			for i = 1, count do
-				findXMLNodesByName( node:childAtIndex( i ), name, namespace, ret)
-			end
-		end
-	end
-	return ret
 end
 
 --------------------------------------------------------------------------------
@@ -229,8 +186,7 @@ end
 function GPhotoAPI.uploadPhoto( propertyTable, params )
 	assert( type( params ) == 'table', 'GPhotoAPI.uploadPhoto: params must be a table' )
 	logger:info( 'uploadPhoto: ', params.filePath )
-	local postUrl = string.format('https://picasaweb.google.com/data/feed/api/user/%s/albumid/%s',
-		'default', params.albumId or 'default')
+	local postUrlForBytes = 'https://photoslibrary.googleapis.com/v1/uploads'
 	local originalParams = params.photoId and table.shallowcopy( params )
 
 	local filePath = assert( params.filePath )
@@ -238,53 +194,53 @@ function GPhotoAPI.uploadPhoto( propertyTable, params )
 
 	local fileName = LrPathUtils.leafName( filePath )
 	local headers = auth_header(propertyTable)
-	headers[#headers+1] = { field = 'Content-Type', value = 'image/jpeg'}
-	headers[#headers+1] = { field = 'Slug', value = fileName }
+	headers[#headers+1] = { field = 'Content-Type', value = 'application/octet-stream'}
+	headers[#headers+1] = { field = 'X-Goog-Upload-File-Name', value = fileName }
 
 	local image = LrFileUtils.readFile( filePath )
-	local result, hdrs
-	if params.photoId then
-		local ids = GPhotoAPI.convertIds(params.photoId)
-		local putUrl = string.format( 'https://picasaweb.google.com/data/media/api/user/%s/albumid/%s/photoid/%s', prefs.userId, ids[2], ids[1])
-		local putHeaders = table.shallowcopy(headers)
-		putHeaders[#putHeaders+1] = { field = 'If-Match', value = '*' }
-		result, hdrs = LrHttp.post( putUrl, image, putHeaders, 'PUT')
-		logger:info(string.format("upload end: %s, result: %s", hdrs.status, result))
-		if hdrs.status == 404 then
-			logger:info("upload again: ".. postUrl)
-			result, hdrs = LrHttp.post( postUrl, image, headers)
-			logger:info(string.format("upload end: %s, result: %s", hdrs.status, result))
-		end
-	else
-		logger:info("upload start: ".. postUrl)
-		result, hdrs = LrHttp.post( postUrl, image, headers, method)
-		logger:info(string.format("upload end: %s, result: %s", hdrs.status, result))
-	end
-	if not result then
+	local resultRaw, hdrs
+	logger:info("upload(binary) start: ".. fileName .. " url: ".. postUrlForBytes)
+	resultRaw, hdrs = LrHttp.post( postUrlForBytes, image, headers)
+	logger:info(string.format("upload(binary) end: %s, result: %s", hdrs.status, resultRaw))
+	if not resultRaw then
 		if hdrs and hdrs.error then
 			LrErrors.throwUserError( formatError( hdrs.error.nativeCode ) )
 		end
 	end
 	-- Parse GPhoto response for photo ID.
-	local xml = LrXml.parseXml( result )
-	local photoId = findXMLNodeByName(xml, 'id', 'http://schemas.google.com/photos/2007', 'text')
+	local uploadToken = resultRaw
+
+	local postUrlForMeta = 'https://photoslibrary.googleapis.com/v1/mediaItems:batchCreate'
+	local meta = {
+		albumId = params.albumId,
+		newMediaItems = {
+			{
+				description = "ITEM_DESCRIPTION",
+	 			simpleMediaItem = {
+					uploadToken = uploadToken
+				}
+			}
+		}
+	}
+	local json = require 'json'
+	local bodyMeta = json.encode(meta)
+
+	local headersMeta = auth_header(propertyTable)
+	headersMeta[#headersMeta+1] = { field = 'Content-Type', value = 'application/json'}
+
+	logger:info("upload(meta) start: ".. postUrlForBytes)
+	resultRaw, hdrs = LrHttp.post( postUrlForMeta, bodyMeta, headersMeta)
+	logger:info(string.format("upload(meta) end: %s, result: %s", hdrs.status, resultRaw))
+
+	local resultMeta = json.decode(resultRaw)
+	local photoId = resultMeta["newMediaItemResults"][1]["mediaItem"]["id"]
 	if photoId then
-		--logger:info("upload successful: ", simpleXml['link:edit-media']['href'], xml)
-		local albumId = findXMLNodeByName(xml, 'albumid', 'http://schemas.google.com/photos/2007', 'text')
-		logger:info(string.format("upload successful: Photo ID: %s, Album ID: %s", photoId, albumId))
-
-		return string.format("%s,%s", photoId, albumId)
-
-	elseif params.photoId then
-		logger:info("upload end: err")
-
-		-- Photo is missing. Most likely, the user deleted it outside of Lightroom. Just repost it.
-		originalParams.photoId = nil
-		return GPhotoAPI.uploadPhoto( propertyTable, originalParams )
+		logger:info(string.format("upload successful: Photo ID: %s, Album ID: %s", photoId, params.albumId))
+		return photoId
 	else
 		logger:info("upload end: exception")
 		LrErrors.throwUserError( LOC( "$$$/GPhoto/Error/API/Upload=GPhoto API returned an error message (function upload, message ^1)",
-							'error message' ) )
+			'error message' ) )
 	end
 	logger:info("upload ended")
 end
@@ -296,10 +252,12 @@ function GPhotoAPI.refreshToken(propertyTable)
 	local args = {
 		client_id = CONSUMER_KEY,
 		client_secret = CONSUMER_SECRET,
+		-- refresh_token = "1/lQTq4grmWmer0PAnveimWjVJ7ZVE482iclp-WJb6Vgc", -- propertyTable.refresh_token,
 		refresh_token = propertyTable.refresh_token,
 		grant_type = 'refresh_token',
 	}
 
+	logger:info("refresh_token: '" .. args.refresh_token .. "'")
 	local response, headers = call_it( "POST", ACCESS_TOKEN_URL, args, math.random(99999) )
 	logger:info("Refresh token response: ", response)
 	if not response or not headers.status then
@@ -320,11 +278,12 @@ function GPhotoAPI.refreshToken(propertyTable)
 	return auth.access_token
 end
 
-	--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 function GPhotoAPI.login(context)
 	local redirectURI = 'https://stanaka.github.io/lightroom-google-photo-plugin/redirect'
 	--local redirectURI = 'urn:ietf:wg:oauth:2.0:oob'
-	local scope = 'https://picasaweb.google.com/data/'
+	--local scope = 'https://picasaweb.google.com/data/'
+	local scope = 'https://www.googleapis.com/auth/photoslibrary'
 	local authURL = string.format(
 		'https://accounts.google.com/o/oauth2/v2/auth?scope=%s&redirect_uri=%s&response_type=code&prompt=consent&access_type=offline&client_id=%s',
 		scope, redirectURI, CONSUMER_KEY)
@@ -380,7 +339,7 @@ function GPhotoAPI.login(context)
 	local response, headers = call_it( "POST", ACCESS_TOKEN_URL, args, math.random(99999) )
 	logger:info(response)
 	if not response or not headers.status then
-		LrErrors.throwUserError( "Could not connect to 500px.com. Please make sure you are connected to the internet and try again." )
+		LrErrors.throwUserError( "Could not connect to google. Please make sure you are connected to the internet and try again." )
 	end
 
 	local json = require 'json'
@@ -400,179 +359,59 @@ function GPhotoAPI.login(context)
 
 end
 
-function GPhotoAPI.getUserId(propertyTable)
-	logger:trace("getUserId", prefs.userId)
-	if prefs.userId then
-		return prefs.userId
-	end
-
-	GPhotoAPI.listAlbums(propertyTable)
-	return prefs.userId
-end
-
-function GPhotoAPI.findAlbumById(propertyTable, targetAlbumId)
-	logger:trace("findAlbumById:", targetAlbumId)
-	local url = string.format('https://picasaweb.google.com/data/entry/api/user/%s/albumid/%s', 'default', targetAlbumId)
-	local headers = auth_header(propertyTable)
-
-	local result, hdrs = LrHttp.get( url, headers )
-	logger:info("findAlbumById result:", result)
-	return result
-end
-
 function GPhotoAPI.listAlbums(propertyTable)
 	logger:trace("listAlbums")
-	local url = string.format('https://picasaweb.google.com/data/feed/api/user/%s', 'default')
+	local url = 'https://photoslibrary.googleapis.com/v1/albums'
 	local headers = auth_header(propertyTable)
+	local nextPageToken
+	local albums = {}
 
-	local result, hdrs = LrHttp.get( url, headers )
-	--logger:info("listAlbums result:", result)
-	local xml = LrXml.parseXml( result )
-	local userId = findXMLNodeByName(xml, 'user', 'http://schemas.google.com/photos/2007', 'text')
-	prefs.userId = userId
-	return xml
+	local count = 0
+	repeat
+		if nextPageToken then
+			url = 'https://photoslibrary.googleapis.com/v1/albums?pageToken=' .. nextPageToken
+		end
+		logger:info("listAlbums url:", url)
+		local result, hdrs = LrHttp.get( url, headers )
+		logger:info("listAlbums result:", result)
+		local json = require 'json'
+		local results = json.decode(result)
+		nextPageToken = results["nextPageToken"]
+		for i,v in ipairs(results.albums) do
+			albums[#albums+1] = v
+		end
+		count = count + 1
+		logger:info("listAlbums nextPageToken:", nextPageToken)
+	until not nextPageToken or count > 50
+
+	return albums
 end
 
 function GPhotoAPI.findOrCreateAlbum(propertyTable, albumName)
 	logger:trace("findOrCreateAlbum")
-	local xml = GPhotoAPI.listAlbums(propertyTable)
-	local entries = findXMLNodesByName(xml, 'entry')
-	for k, entry in pairs(entries) do
-		local title = findXMLNodeByName(entry, 'title', nil, 'text')
+	local albums = GPhotoAPI.listAlbums(propertyTable)
+	-- local entries = albums.albums
+	for i, entry in ipairs(albums) do
+		local title = entry["title"]
 		logger:info("Album:", title)
 		if title == albumName then
-			local albumId = findXMLNodeByName(entry, 'id', 'http://schemas.google.com/photos/2007', 'text')
+			local albumId = entry["id"]
 			logger:info("Album found:", albumId)
 			return albumId
 		end
 	end
 
-	url = string.format('https://picasaweb.google.com/data/feed/api/user/%s', GPhotoAPI.getUserId(propertyTable))
-	local body = string.format([[
-        <entry xmlns='http://www.w3.org/2005/Atom'
-            xmlns:media='http://search.yahoo.com/mrss/'
-            xmlns:gphoto='http://schemas.google.com/photos/2007'>
-          <title type='text'>%s</title>
-          <category scheme='http://schemas.google.com/g/2005#kind'
-            term='http://schemas.google.com/photos/2007#album'></category>
-        </entry>]], albumName)
+	local url = 'https://photoslibrary.googleapis.com/v1/albums'
+	local json = require 'json'
+	local body = json.encode({ album = { title = albumName } })
+	-- local body = string.format([[{"album": {"title": "%s"}}]], albumName)
 	local headers = auth_header(propertyTable)
-	headers[#headers+1] = { field = 'Content-Type', value = 'application/atom+xml' }
+	headers[#headers+1] = { field = 'Content-Type', value = 'application/json' }
 
 	local result, hdrs = LrHttp.post( url, body, headers )
 	logger:trace("findOrCreateAlbum result:", result)
-
-	local entry = LrXml.parseXml( result )
-	local albumId = findXMLNodeByName(entry, 'id', 'http://schemas.google.com/photos/2007', 'text')
+	local entry = json.decode(result)
+	local albumId = entry["id"]
 	logger:info("Album created:", albumId)
 	return albumId
-end
-
---------------------------------------------------------------------------------
-
-function GPhotoAPI.updateAlbum(propertyTable, albumId, albumName)
-	logger:trace("updateAlbum:", albumId, albumName)
-	local url = string.format('https://picasaweb.google.com/data/entry/api/user/%s/albumid/%s', GPhotoAPI.getUserId(propertyTable), albumId)
-	local headers = auth_header(propertyTable)
-	local album = GPhotoAPI.findAlbumById(propertyTable, albumId)
-
-	local body = string.gsub(album, '<title>.+</title>', '<title>'..albumName..'</title>')
-	local method = 'PUT'
-	headers[#headers+1] = { field = 'Content-Type', value = 'application/atom+xml' }
-	headers[#headers+1] = { field = 'If-Match', value = '*' }
-
-	logger:trace("updateAlbum url:", url)
-	logger:trace("updateAlbum body:", body)
-	local result, hdrs = LrHttp.post( url, body, headers, method )
-	logger:trace("updateAlbum result:", result)
-	if not result then
-		if hdrs and hdrs.error then
-			LrErrors.throwUserError( formatError( hdrs.error.nativeCode ) )
-		end
-	end
-	return true
-end
-
-
---------------------------------------------------------------------------------
-
-function GPhotoAPI.listPhotosFromAlbum( propertyTable, params )
-	logger:trace('GPhotoAPI.listPhotosFromAlbum', params.albumId)
-
-	local results = {}
-	local data, response
-	local numPages, curPage = 1, 0
-	local itemsPerPage = 1000
-
-	local albumId = params.albumId or 'default'
-	local headers = auth_header(propertyTable)
-	local photos = {}
-
-	while curPage < numPages do
-		-- https://picasaweb.google.com/data/feed/api/user/liz/albumid/albumID?start-index=1&amp;max-results=1000&amp;v=2
-		local url = string.format('https://picasaweb.google.com/data/feed/api/user/%s/albumid/%s?start-index=%d&max-result=%d&v2',
-			GPhotoAPI.getUserId(propertyTable), albumId, (curPage * itemsPerPage) + 1, itemsPerPage)
-		curPage = curPage + 1
-
-		logger:trace("call API", url)
-		local result, hdrs = LrHttp.get( url, headers )
-		logger:trace('get list of photos', result)
-
-		local xml = LrXml.parseXml( result )
-
-		local totalResults = findXMLNodeByName(xml, 'totalResults', 'http://a9.com/-/spec/opensearch/1.1/', 'text')
-		logger:trace('totalResults', totalResults)
-		itemsPerPage = findXMLNodeByName(xml, 'itemsPerPage', 'http://a9.com/-/spec/opensearch/1.1/', 'text')
-		logger:trace('itemsPerPage', itemsPerPage)
-		local entries = findXMLNodesByName(xml, 'entry')
-		logger:trace('entries', entries)
-		for k, entry in pairs(entries) do
-			local photoId = findXMLNodeByName(entry, 'id', 'http://schemas.google.com/photos/2007', 'text')
-			local albumId = findXMLNodeByName(entry, 'albumid', 'http://schemas.google.com/photos/2007', 'text')
-			logger:info(string.format("Photo ID: %s, Album ID: %s", photoId, albumId))
-
-			local remoteId =  string.format("%s,%s", photoId, albumId)
-
-			photos[#photos+1] = {
-				remoteId = remoteId,
-			}
-		end
-	end
-
-	return photos
-end
-
---------------------------------------------------------------------------------
-
-function GPhotoAPI.deletePhoto( propertyTable, params )
-	logger:info("deletePhoto", params.photoId)
-	local ids = {}
-	for id in string.gmatch(params.photoId, "%d+") do
-		ids[#ids+1] = id
-	end
-	-- 'DELETE https://picasaweb.google.com/data/entry/api/user/userID/albumid/albumID/photoid/photoID'
-	local postUrl = string.format( 'https://picasaweb.google.com/data/entry/api/user/%s/albumid/%s/photoid/%s', GPhotoAPI.getUserId(propertyTable), ids[2], ids[1])
-	local headers = auth_header(propertyTable)
-	headers[#headers+1] = { field = 'If-Match', value = '*' }
-	local method = 'DELETE'
-
-	logger:info("deletePhoto start: ".. postUrl)
-	local result, hdrs = LrHttp.post( postUrl, '', headers, method)
-	logger:info("deletePhoto end: ", result, hdrs)
-	for k, v in pairs(hdrs) do
-		if type(v) == 'table' then
-			for k2, v2 in pairs(v) do
-				logger:info("deletePhoto hdrs2:", k2, v2)
-			end
-		else
-			logger:info("deletePhoto hdrs:", k, v)
-		end
-	end
-
-	if not result then
-		if hdrs and hdrs.error then
-			LrErrors.throwUserError( formatError( hdrs.error.nativeCode ) )
-		end
-	end
-	return true
 end

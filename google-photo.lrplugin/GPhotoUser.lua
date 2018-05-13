@@ -87,8 +87,9 @@ function GPhotoUser.login( propertyTable )
 	        propertyTable.access_token = auth.access_token
 	        propertyTable.refresh_token = auth.refresh_token
 		end
-		logger:info("access_token after: ", propertyTable.access_token)
-        GPhotoUser.updateUserStatusTextBindings( propertyTable )
+		logger:trace("access_token after: ", propertyTable.access_token)
+		logger:trace("refresh_token after: ", propertyTable.refresh_token)
+		GPhotoUser.updateUserStatusTextBindings( propertyTable )
 	end )
 end
 
@@ -101,15 +102,9 @@ function GPhotoUser.verifyLogin( propertyTable )
 		LrTasks.startAsyncTask( function()
 			logger:trace( "verifyLogin: updateStatus() is executing." )
 			if storedCredentialsAreValid( propertyTable ) then
-                if propertyTable.LR_editingExistingPublishConnection then
-					propertyTable.loginButtonTitle = LOC "$$$/GPhoto/LoginButton/LogInAgain=Log In"
-					propertyTable.loginButtonEnabled = false
-					propertyTable.validAccount = true
-                else
-					propertyTable.loginButtonTitle = LOC "$$$/GPhoto/LoginButton/LoggedIn=Switch Account"
-					propertyTable.loginButtonEnabled = true
-					propertyTable.validAccount = true
-                end
+				propertyTable.loginButtonTitle = LOC "$$$/GPhoto/LoginButton/LoggedIn=Switch Account"
+				propertyTable.loginButtonEnabled = true
+				propertyTable.validAccount = true
 			else
 				notLoggedIn( propertyTable )
 			end
