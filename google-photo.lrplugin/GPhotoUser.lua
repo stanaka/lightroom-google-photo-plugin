@@ -29,8 +29,10 @@ local function notLoggedIn( propertyTable )
 
 	propertyTable.username = nil
 	propertyTable.fullname = ''
-    propertyTable.access_token = nil
-    propertyTable.refresh_token = nil
+  propertyTable.consumer_key = ''
+  propertyTable.consumer_secret = ''
+  propertyTable.access_token = nil
+  propertyTable.refresh_token = nil
 
 	propertyTable.accountStatus = LOC "$$$/GPhoto/SignIn=Sign in with your Google account."
 	propertyTable.loginButtonTitle = LOC "$$$/GPhoto/LoginButton/NotLoggedIn=Log In"
@@ -55,6 +57,8 @@ function GPhotoUser.login( propertyTable )
 
 		propertyTable.accountStatus = LOC "$$$/GPhoto/AccountStatus/LoggingIn=Logging in..."
 		propertyTable.loginButtonEnabled = false
+		propertyTable.consumer_key = propertyTable.consumer_key_input
+		propertyTable.consumer_secret = propertyTable.consumer_secret_input
 
 		LrDialogs.attachErrorDialogToFunctionContext( context )
 
@@ -70,7 +74,7 @@ function GPhotoUser.login( propertyTable )
 		propertyTable.accountStatus = LOC "$$$/GPhoto/AccountStatus/WaitingForGPhoto=Waiting for response..."
 
 		require 'GPhotoAPI'
-        local auth = GPhotoAPI.login(context)
+        local auth = GPhotoAPI.login(context, propertyTable.consumer_key, propertyTable.consumer_secret)
 
 		-- If editing existing connection, make sure user didn't try to change user ID on us.
         --[[

@@ -42,6 +42,8 @@ end
 exportServiceProvider.supportsIncrementalPublish = 'only'
 
 exportServiceProvider.exportPresetFields = {
+	{ key = 'consumer_key', default = '' },
+	{ key = 'consumer_secret', default = '' },
 	{ key = 'access_token', default = '' },
 	{ key = 'refresh_token', default = '' },
 }
@@ -149,6 +151,55 @@ function exportServiceProvider.sectionsForTopOfDialog( f, propertyTable )
 					end,
 				},
 			},
+
+			f:row {
+				spacing = f:control_spacing(),
+				f:separator {
+					fill_vertical = 0,
+					fill_horizontal = 1,
+				},
+			},
+
+			f:row {
+				spacing = f:control_spacing(),
+				f:static_text {
+					title = LOC "$$$/GPhoto/ExportDialog/ForDevelopers=for Developers (If you want to use your own API Key)",
+					alignment = 'left',
+					fill_horizontal = 1,
+				},
+			},
+
+			f:row {
+				spacing = f:control_spacing(),
+				f:static_text {
+					title = LOC "$$$/GPhoto/ExportDialog/ConsumerKey=Client ID",
+					alignment = 'right',
+					fill_horizontal = 1,
+				},
+				f:edit_field {
+					immediate = true, -- update value w/every keystroke
+					fill_horizontal = 1,
+					wraps = false,
+					value = bind 'consumer_key_input',
+				},
+			},
+
+			f:row {
+				spacing = f:control_spacing(),
+				f:static_text {
+					title = LOC "$$$/GPhoto/ExportDialog/ConsumerSecret=Client Secret",
+					alignment = 'right',
+					fill_horizontal = 1,
+				},
+				f:password_field {
+					immediate = true, -- update value w/every keystroke
+					fill_horizontal = 1,
+					wraps = false,
+					value = bind 'consumer_secret_input',
+				},
+			},
+
+
 		},
 	}
 end
