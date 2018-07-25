@@ -377,6 +377,9 @@ function GPhotoAPI.listAlbums(propertyTable)
 		local json = require 'json'
 		local results = json.decode(result)
 		nextPageToken = results["nextPageToken"]
+		if not results.albums then
+			break
+		end
 		for i,v in ipairs(results.albums) do
 			albums[#albums+1] = v
 		end
