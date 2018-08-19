@@ -339,7 +339,7 @@ function GPhotoAPI.login(context)
 	local response, headers = call_it( "POST", ACCESS_TOKEN_URL, args, math.random(99999) )
 	logger:info(response)
 	if not response or not headers.status then
-		LrErrors.throwUserError( "Could not connect to google. Please make sure you are connected to the internet and try again." )
+		LrErrors.throwUserError( "Could not connect to googleapis.com. Please make sure you are connected to the internet and try again." )
 	end
 
 	local json = require 'json'
