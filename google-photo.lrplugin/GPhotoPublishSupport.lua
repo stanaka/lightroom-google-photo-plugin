@@ -33,7 +33,8 @@ publishServiceProvider.titleForGoToPublishedPhoto = "disable"
 function publishServiceProvider.deletePhotosFromPublishedCollection( publishSettings, arrayOfPhotoIds, deletedCallback )
 	logger:trace('deletePhotosFromPublishedCollection')
 	for i, photoId in ipairs( arrayOfPhotoIds ) do
-		GPhotoAPI.deletePhoto( publishSettings, { photoId = photoId, suppressErrorCodes = { [ 1 ] = true } } )
+		-- Google Photos does not provide a delete method yet.
+		-- GPhotoAPI.deletePhoto( publishSettings, { photoId = photoId, suppressErrorCodes = { [ 1 ] = true } } )
 		deletedCallback( photoId )
 	end
 end
@@ -41,13 +42,14 @@ end
 function publishServiceProvider.metadataThatTriggersRepublish( publishSettings )
 	logger:trace('metadataThatTriggersRepublish')
 
+	-- Google Photos API does not provide an update method
 	return {
 		default = false,
-		title = true,
-		caption = true,
-		keywords = true,
-		gps = true,
-		dateCreated = true,
+		title = false,
+		caption = false,
+		keywords = false,
+		gps = false,
+		dateCreated = false,
 
 		-- also (not used by Google Photo plug-in):
 			-- customMetadata = true,
@@ -68,10 +70,11 @@ end
 
 function publishServiceProvider.renamePublishedCollection( publishSettings, info )
 	logger:trace('renamePublishedCollection')
-	if info.remoteId then
-		GPhotoAPI.refreshToken(publishSettings)
-		GPhotoAPI.updateAlbum(publishSettings, info.remoteId, info.name)
-	end
+	-- Google Photos does not provide an update method yet.
+	--if info.remoteId then
+	--	GPhotoAPI.refreshToken(publishSettings)
+	--  GPhotoAPI.updateAlbum(publishSettings, info.remoteId, info.name)
+	--end
 end
 
 function publishServiceProvider.deletePublishedCollection( publishSettings, info )
