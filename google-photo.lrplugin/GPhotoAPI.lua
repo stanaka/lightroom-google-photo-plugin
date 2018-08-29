@@ -75,12 +75,19 @@ local function generate_nonce()
 end
 
 --[[ Returns an oAuth athorization header and a query string (or post body). ]]--
-local function oauth_sign( method, url, args )
+local function oauth_sign( consumer_key, consumer_secret, method, url, args )
 
 	assert( method == "GET" or method == "POST" )
 
+	--using default key
+	if consumer_key == "" or consumer_key == nil then
+		logger:info( "Using default key" )
+		consumer_key = CONSUMER_KEY
+		consumer_secret = CONSUMER_SECRET
+	end
+
 	--common oauth parameters
-	args.oauth_consumer_key = CONSUMER_KEY
+	args.oauth_consumer_key = consumer_key
 	args.oauth_timestamp = unix_timestamp()
 	args.oauth_version = "1.0"
 	args.oauth_nonce = generate_nonce()
@@ -130,7 +137,7 @@ local function oauth_sign( method, url, args )
 	end
 
 	local to_sign = string.format( "%s&%s&%s", method, oauth_encode( url ), oauth_encode( data ) )
-	local key = string.format( "%s&%s", oauth_encode( CONSUMER_SECRET ), oauth_encode( oauth_token_secret ) )
+	local key = string.format( "%s&%s", oauth_encode( consumer_secret ), oauth_encode( oauth_token_secret ) )
 	local hmac_binary = hmac_sha1_binary( key, to_sign )
 	local hmac_b64 = LrStringUtils.encodeBase64( hmac_binary )
 
@@ -141,8 +148,8 @@ local function oauth_sign( method, url, args )
 end
 
 --------------------------------------------------------------------------------
-local function call_it( method, url, params, rid )
-	local query_string, auth_header = oauth_sign( method, url, params )
+local function call_it( consumer_key, consumer_secret, method, url, params, rid )
+	local query_string, auth_header = oauth_sign( consumer_key, consumer_secret, method, url, params )
 
 	if rid then
 		logger:trace( "Query " .. rid .. ": " .. method .. " " .. url .. "?" .. query_string )
@@ -250,15 +257,22 @@ function GPhotoAPI.refreshToken(propertyTable)
 	logger:trace('refreshToken invoked')
 	-- get an access token_secret
 	local args = {
-		client_id = CONSUMER_KEY,
-		client_secret = CONSUMER_SECRET,
+		client_id = propertyTable.consumer_key,
+		client_secret = propertyTable.consumer_secret,
 		-- refresh_token = "1/lQTq4grmWmer0PAnveimWjVJ7ZVE482iclp-WJb6Vgc", -- propertyTable.refresh_token,
 		refresh_token = propertyTable.refresh_token,
 		grant_type = 'refresh_token',
 	}
 
+	--using default key
+	if propertyTable.consumer_key == "" or propertyTable.consumer_key == nil then
+		logger:info( "Using default key" )
+		args.client_id = CONSUMER_KEY
+		args.client_secret = CONSUMER_SECRET
+	end
+
 	logger:info("refresh_token: '" .. args.refresh_token .. "'")
-	local response, headers = call_it( "POST", ACCESS_TOKEN_URL, args, math.random(99999) )
+	local response, headers = call_it( args.client_id, args.client_secret, "POST", ACCESS_TOKEN_URL, args, math.random(99999) )
 	logger:info("Refresh token response: ", response)
 	if not response or not headers.status then
 		LrErrors.throwUserError( "Could not connect to Google Photo. Please make sure you are connected to the internet and try again." )
@@ -279,14 +293,22 @@ function GPhotoAPI.refreshToken(propertyTable)
 end
 
 --------------------------------------------------------------------------------
-function GPhotoAPI.login(context)
+function GPhotoAPI.login(context, consumer_key, consumer_secret)
 	local redirectURI = 'https://stanaka.github.io/lightroom-google-photo-plugin/redirect'
 	--local redirectURI = 'urn:ietf:wg:oauth:2.0:oob'
 	--local scope = 'https://picasaweb.google.com/data/'
 	local scope = 'https://www.googleapis.com/auth/photoslibrary'
+
+	--using default key
+	if consumer_key == "" or consumer_key == nil then
+		logger:info( "Using default key" )
+		consumer_key = CONSUMER_KEY
+		consumer_secret = CONSUMER_SECRET
+	end
+
 	local authURL = string.format(
 		'https://accounts.google.com/o/oauth2/v2/auth?scope=%s&redirect_uri=%s&response_type=code&prompt=consent&access_type=offline&client_id=%s',
-		scope, redirectURI, CONSUMER_KEY)
+		scope, redirectURI, consumer_key)
 
 	logger:info('openAuthUrl: ', authURL)
 	LrHttp.openUrlInBrowser( authURL )
@@ -329,14 +351,14 @@ function GPhotoAPI.login(context)
 
 	-- get an access token_secret
 	local args = {
-		client_id = CONSUMER_KEY,
-		client_secret = CONSUMER_SECRET,
+		client_id = consumer_key,
+		client_secret = consumer_secret,
 		redirect_uri = redirectURI,
 		code = LrStringUtils.trimWhitespace(properties.verifier),
 		grant_type = 'authorization_code',
 	}
 
-	local response, headers = call_it( "POST", ACCESS_TOKEN_URL, args, math.random(99999) )
+	local response, headers = call_it( consumer_key, consumer_secret, "POST", ACCESS_TOKEN_URL, args, math.random(99999) )
 	logger:info(response)
 	if not response or not headers.status then
 		LrErrors.throwUserError( "Could not connect to googleapis.com. Please make sure you are connected to the internet and try again." )
