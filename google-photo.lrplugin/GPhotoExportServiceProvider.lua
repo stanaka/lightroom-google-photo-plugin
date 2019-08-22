@@ -46,6 +46,7 @@ exportServiceProvider.exportPresetFields = {
 	{ key = 'consumer_secret', default = '' },
 	{ key = 'access_token', default = '' },
 	{ key = 'refresh_token', default = '' },
+	{ key = 'separator', default = '  |  ' },
 }
 
 --- photos are always rendered to a temporary location and are deleted when the export is complete
@@ -85,21 +86,6 @@ local kSafetyTitles = {
 
 local function booleanToNumber( value )
 	return value and 1 or 0
-end
-
-local function getGPhotoTitle( photo, exportSettings, pathOrMessage )
-	local title
-
-	-- Get title according to the options in GPhoto Title section.
-	if exportSettings.titleFirstChoice == 'filename' then
-		title = LrPathUtils.leafName( pathOrMessage )
-	elseif exportSettings.titleFirstChoice == 'title' then
-		title = photo:getFormattedMetadata 'title'
-		if ( not title or #title == 0 ) and exportSettings.titleSecondChoice == 'filename' then
-			title = LrPathUtils.leafName( pathOrMessage )
-		end
-	end
-	return title
 end
 
 --------------------------------------------------------------------------------
@@ -201,6 +187,25 @@ function exportServiceProvider.sectionsForTopOfDialog( f, propertyTable )
 
 
 		},
+		{
+			title = LOC "$$$/GPhoto/ExportDialog/Settings=Google Photo Settings",
+
+			f:row {
+				spacing = f:control_spacing(),
+				f:static_text {
+					title = LOC "$$$/GPhoto/ExportDialog/Separator=Separator between title and description",
+					alignment = 'right',
+					fill_horizontal = 1,
+				},
+				f:edit_field {
+					immediate = true, -- update value w/every keystroke
+					fill_horizontal = 1,
+					wraps = false,
+					value = bind 'separator',
+				},
+			},
+
+		},
 	}
 end
 
@@ -286,8 +291,7 @@ function exportServiceProvider.processRenderedPhotos( functionContext, exportCon
 
 			if success then
 				-- Build up common metadata for this photo.
-				local title = getGPhotoTitle( photo, exportSettings, pathOrMessage )
-
+				local title = photo:getFormattedMetadata( 'title' )
 				local description = photo:getFormattedMetadata( 'caption' )
 				local keywordTags = photo:getFormattedMetadata( 'keywordTagsForExport' )
 
@@ -313,7 +317,7 @@ function exportServiceProvider.processRenderedPhotos( functionContext, exportCon
 										photoId = GPhotoPhotoId,
 										albumId = albumId,
 										filePath = pathOrMessage,
-										title = title or '',
+										title = title,
 										description = description,
 										tags = table.concat( tags, ',' ),
 									} )

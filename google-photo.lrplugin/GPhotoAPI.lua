@@ -51,6 +51,30 @@ end
 
 --------------------------------------------------------------------------------
 
+local function isempty( s )
+  return s == nil or s == ''
+end
+
+--------------------------------------------------------------------------------
+
+local function createOneLineDescription( title, description, separator )
+	if(isempty( title ) and not isempty( description )) then
+		return description
+	end
+	
+	if(not isempty( title ) and isempty( description )) then
+		return title
+	end
+	
+	if( not isempty( title ) and not isempty( description )) then
+		return title .. separator .. description
+	end
+	
+	return nil
+end
+
+--------------------------------------------------------------------------------
+
 --[[ Some Handy Constants ]]--
 
 -- Cocaoa time of 0 is unix time 978307200
@@ -216,13 +240,13 @@ function GPhotoAPI.uploadPhoto( propertyTable, params )
 	end
 	-- Parse GPhoto response for photo ID.
 	local uploadToken = resultRaw
-
+	
 	local postUrlForMeta = 'https://photoslibrary.googleapis.com/v1/mediaItems:batchCreate'
 	local meta = {
 		albumId = params.albumId,
 		newMediaItems = {
 			{
-				description = "ITEM_DESCRIPTION",
+				description = createOneLineDescription( params.title, params.description, propertyTable.separator ),
 	 			simpleMediaItem = {
 					uploadToken = uploadToken
 				}

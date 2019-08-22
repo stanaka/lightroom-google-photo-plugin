@@ -29,10 +29,10 @@ local function notLoggedIn( propertyTable )
 
 	propertyTable.username = nil
 	propertyTable.fullname = ''
-  propertyTable.consumer_key = ''
-  propertyTable.consumer_secret = ''
-  propertyTable.access_token = nil
-  propertyTable.refresh_token = nil
+	propertyTable.consumer_key = ''
+	propertyTable.consumer_secret = ''
+	propertyTable.access_token = nil
+	propertyTable.refresh_token = nil
 
 	propertyTable.accountStatus = LOC "$$$/GPhoto/SignIn=Sign in with your Google account."
 	propertyTable.loginButtonTitle = LOC "$$$/GPhoto/LoginButton/NotLoggedIn=Log In"
