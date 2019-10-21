@@ -214,14 +214,20 @@ function GPhotoAPI.convertIds( photoId )
 	return ids
 end
 
-function GPhotoAPI.uploadPhoto( propertyTable, params )
+function GPhotoAPI.uploadPhoto( propertyTable, params, roundNo )
+    local round = roundNo
+    if round == nil then
+        round = 0
+    end
+
 	assert( type( params ) == 'table', 'GPhotoAPI.uploadPhoto: params must be a table' )
+	logger:info(string.format('upload round number: %s', round))
 	logger:info( 'uploadPhoto: ', params.filePath )
+
 	local postUrlForBytes = 'https://photoslibrary.googleapis.com/v1/uploads'
 	local originalParams = params.photoId and table.shallowcopy( params )
 
 	local filePath = assert( params.filePath )
-	params.filePath = nil
 
 	local fileName = LrPathUtils.leafName( filePath )
 	local headers = auth_header(propertyTable)
@@ -263,14 +269,32 @@ function GPhotoAPI.uploadPhoto( propertyTable, params )
 	resultRaw, hdrs = LrHttp.post( postUrlForMeta, bodyMeta, headersMeta)
 	logger:info(string.format("upload(meta) end: %s, result: %s", hdrs.status, resultRaw))
 
-	local resultMeta = json.decode(resultRaw)
+    local resultMeta = json.decode(resultRaw)
+
+    local error = resultMeta["error"]
+    if error then
+        logger:info(string.format('something went wrong, trying again...'))
+        if round < 3 then
+            GPhotoAPI.uploadPhoto( propertyTable, params, round + 1 )
+        else
+            local code = error["code"]
+            local message = error["message"]
+            local status = error["status"]
+
+            logger:info(string.format('error: code=%s, message=%s, status=%s', code, message, status))
+            LrErrors.throwUserError( LOC( "$$$/GPhoto/Error/API/UploadRetries=GPhoto API could not upload file ^1^n^nMessage: ^2^nCode: ^3^nStatus: ^4",
+                        fileName, message, code, status ) )
+        end
+        return
+    end
+
 	local photoId = resultMeta["newMediaItemResults"][1]["mediaItem"]["id"]
 	if photoId then
 		logger:info(string.format("upload successful: Photo ID: %s, Album ID: %s", photoId, params.albumId))
 		return photoId
 	else
 		logger:info("upload end: exception")
-		LrErrors.throwUserError( LOC( "$$$/GPhoto/Error/API/Upload=GPhoto API returned an error message (function upload, message ^1)",
+		LrErrors.throwUserError( LOC( "$$$/GPhoto/Error/API/Upload=GPhoto API returned an error (function upload, message ^1)",
 			'error message' ) )
 	end
 	logger:info("upload ended")
