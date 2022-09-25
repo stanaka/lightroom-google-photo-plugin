@@ -294,7 +294,7 @@ end
 
 --------------------------------------------------------------------------------
 function GPhotoAPI.login(context, consumer_key, consumer_secret)
-	local redirectURI = 'https://stanaka.github.io/lightroom-google-photo-plugin/redirect'
+	local redirectURI = 'https://tapayne88.github.io/lightroom-google-photo-plugin/redirect'
 	--local redirectURI = 'urn:ietf:wg:oauth:2.0:oob'
 	--local scope = 'https://picasaweb.google.com/data/'
 	local scope = 'https://www.googleapis.com/auth/photoslibrary'

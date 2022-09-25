@@ -2,7 +2,7 @@ return {
 	LrSdkVersion = 3.0,
 	LrSdkMinimumVersion = 3.0, -- minimum SDK version required by this plug-in
 
-	LrToolkitIdentifier = 'org.stanaka.lightroom-google-photo-plugin',
+	LrToolkitIdentifier = 'org.tapayne88.lightroom-google-photo-plugin',
 	LrPluginName = LOC "$$$/GPhoto/PluginName=GooglePhoto",
 
 	LrExportServiceProvider = {
