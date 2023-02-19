@@ -194,7 +194,6 @@ function GPhotoAPI.uploadPhoto( propertyTable, params )
 	assert( type( params ) == 'table', 'GPhotoAPI.uploadPhoto: params must be a table' )
 	logger:info( 'uploadPhoto: ', params.filePath )
 	local postUrlForBytes = 'https://photoslibrary.googleapis.com/v1/uploads'
-	local originalParams = params.photoId and table.shallowcopy( params )
 
 	local filePath = assert( params.filePath )
 	params.filePath = nil

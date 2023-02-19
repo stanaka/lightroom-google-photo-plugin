@@ -3,7 +3,7 @@ return {
 	LrSdkMinimumVersion = 3.0, -- minimum SDK version required by this plug-in
 
 	LrToolkitIdentifier = 'org.tapayne88.lightroom-google-photo-plugin',
-	LrPluginName = LOC "$$$/GPhoto/PluginName=GooglePhoto",
+	LrPluginName = LOC "$$$/GPhoto/PluginName=Google Photo",
 
 	LrExportServiceProvider = {
 		title = LOC "$$$/GPhoto/GPhoto-title=Google Photo",

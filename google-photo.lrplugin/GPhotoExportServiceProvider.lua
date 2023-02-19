@@ -295,7 +295,7 @@ function exportServiceProvider.processRenderedPhotos( functionContext, exportCon
 
 				if keywordTags then
 					tags = {}
-					local keywordIter = string.gfind( keywordTags, "[^,]+" )
+					local keywordIter = string.gmatch( keywordTags, "[^,]+" )
 
 					for keyword in keywordIter do
 						if string.sub( keyword, 1, 1 ) == ' ' then
