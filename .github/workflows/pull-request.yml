@@ -26,3 +26,4 @@ jobs:
         uses: mrcjkb/lua-typecheck-action@v0.1.2
         with:
           directories: google-photo.lrplugin
+          configpath: ".luarc.json"
