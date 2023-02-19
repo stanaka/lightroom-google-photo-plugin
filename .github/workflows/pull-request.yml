@@ -11,12 +11,24 @@ on:
   workflow_dispatch:
 
 jobs:
-  typecheck:
+  stylua:
+    name: Stylua
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
+      - uses: JohnnyMorganz/stylua-action@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: 0.16.0
+          args: --check .
 
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
       - name: Type Check Code Base
         uses: mrcjkb/lua-typecheck-action@v0.1.2
         with:
